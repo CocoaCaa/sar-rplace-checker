@@ -69,19 +69,20 @@ async function startBrowser(params: {
   refImageFull: Jimp;
   onPixelChanged: (params: { x: number; y: number }) => void;
 }) {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   const page = await browser.newPage();
   await page.goto('https://www.reddit.com/r/place/?cx=1365&cy=712&px=13');
   let lastTime = Date.now();
 
   let healthCheckIntervalId = setInterval(() => {
+    console.log(`${(lastTime - startTime) / 1000}s`);
     if (Date.now() - lastTime > 30000) {
       clearInterval(healthCheckIntervalId);
       void browser.close();
       void startBrowser(params);
       console.error('Cannot get new image event a long time, restarting browser...');
     }
-  }, 1000);
+  }, 5000);
 
   const startTime = Date.now();
   page.on('response', async (event) => {
@@ -90,7 +91,6 @@ async function startBrowser(params: {
     }
 
     lastTime = Date.now();
-    process.stdout.write(`${(lastTime - startTime) / 1000}s\r`);
 
     handleFileAdded({
       buffer: await event.buffer(),
