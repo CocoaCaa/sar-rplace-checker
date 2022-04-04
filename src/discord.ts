@@ -1,6 +1,7 @@
 import { Client, Intents, NonThreadGuildBasedChannel } from 'discord.js';
+import { OnPixelChanged } from './types';
 
-export function initDiscord(): { sendAlert: (params: { x: number; y: number }) => Promise<void> } {
+export function initDiscord(): { sendAlert: (params: OnPixelChanged) => Promise<void> } {
   const client = new Client({ intents: [Intents.FLAGS.GUILDS] });
   let channel: NonThreadGuildBasedChannel | null = null;
 
@@ -12,11 +13,11 @@ export function initDiscord(): { sendAlert: (params: { x: number; y: number }) =
   client.login(process.env.DISCORD_BOT_TOKEN!);
 
   return {
-    async sendAlert(params: { x: number; y: number }) {
+    async sendAlert(params: OnPixelChanged) {
       if (!channel?.isText()) {
         return;
       }
-      const message = `Pixel changed X:${params.x} Y:${params.y}!`;
+      const message = `Pixel changed X:${params.x} Y:${params.y}!\nNow the colour is rgb(${params.afterColor.r}, ${params.afterColor.g}, ${params.afterColor.b})`;
       try {
         await channel.send(message);
       } catch {

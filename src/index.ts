@@ -3,28 +3,25 @@ import path from 'path';
 import Jimp from 'jimp';
 import puppeteer from 'puppeteer';
 import { initDiscord } from './discord';
+import { OnPixelChanged } from './types';
 
 dotenv.config();
 
 const REF_IMAGE_PATH = path.resolve(process.cwd(), 'ref-image.png');
 const REF_IMAGE_FULL_PATH = path.resolve(process.cwd(), 'ref-image-full.png');
 const PARTIAL_WIDTH = 1000;
-const START_X = 1365;
+const START_X = 1365 - PARTIAL_WIDTH;
 const START_Y = 712;
 
 async function handleFileAdded(params: {
   buffer: Buffer;
   refImage: Jimp;
   refImageFull: Jimp;
-  onPixelChanged: (params: { x: number; y: number }) => unknown;
+  onPixelChanged: (params: OnPixelChanged) => unknown;
 }) {
   try {
     const image = await Jimp.read(params.buffer);
-    const isFullWidthImage = image.bitmap.width > PARTIAL_WIDTH;
-    if (isFullWidthImage) {
-      console.log('Full width image');
-    }
-    image.scan(START_X - (isFullWidthImage ? 0 : PARTIAL_WIDTH), START_Y, 21, 31, function (x, y, idx) {
+    image.scan(START_X, START_Y, 21, 31, function (x, y, idx) {
       const red = image.bitmap.data[idx + 0];
       const green = image.bitmap.data[idx + 1];
       const blue = image.bitmap.data[idx + 2];
@@ -33,31 +30,28 @@ async function handleFileAdded(params: {
         return;
       }
 
-      let refImageRed = 0;
-      let refImageGreen = 0;
-      let refImageBlue = 0;
-
-      if (isFullWidthImage) {
-        // Full width image
-        refImageRed = params.refImageFull.bitmap.data[idx + 0];
-        refImageGreen = params.refImageFull.bitmap.data[idx + 1];
-        refImageBlue = params.refImageFull.bitmap.data[idx + 2];
-      } else {
-        // Partial width image
-        refImageRed = params.refImage.bitmap.data[idx + 0];
-        refImageGreen = params.refImage.bitmap.data[idx + 1];
-        refImageBlue = params.refImage.bitmap.data[idx + 2];
-      }
+      const refImageRed = params.refImage.bitmap.data[idx + 0];
+      const refImageGreen = params.refImage.bitmap.data[idx + 1];
+      const refImageBlue = params.refImage.bitmap.data[idx + 2];
 
       if (red === refImageRed && green === refImageGreen && blue === refImageBlue) {
         return;
       }
 
-      // For debug only
-      // console.log(`rgb(${red}, ${green}, ${blue}) vs rgb(${refImageRed}, ${refImageGreen}, ${refImageBlue})`);
-      // void fs.promises.writeFile(path.resolve(IMAGE_PATH, `${Date.now()}_${x}_${y + 1}.png`), params.buffer);
-
-      params.onPixelChanged({ x: x + (isFullWidthImage ? 0 : PARTIAL_WIDTH), y });
+      params.onPixelChanged({
+        x: x + PARTIAL_WIDTH,
+        y,
+        beforeColor: {
+          r: refImageRed,
+          g: refImageGreen,
+          b: refImageBlue,
+        },
+        afterColor: {
+          r: red,
+          g: green,
+          b: blue,
+        },
+      });
     });
   } catch (err) {
     console.error('Failed to read image', err);
@@ -67,7 +61,7 @@ async function handleFileAdded(params: {
 async function startBrowser(params: {
   refImage: Jimp;
   refImageFull: Jimp;
-  onPixelChanged: (params: { x: number; y: number }) => void;
+  onPixelChanged: (params: OnPixelChanged) => void;
 }) {
   const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   const page = await browser.newPage();
@@ -109,8 +103,8 @@ async function start() {
   await startBrowser({
     refImage,
     refImageFull,
-    onPixelChanged({ x, y }) {
-      sendAlert({ x, y });
+    onPixelChanged(params) {
+      sendAlert(params);
     },
   });
 }
