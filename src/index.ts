@@ -8,7 +8,6 @@ import { OnPixelChanged } from './types';
 dotenv.config();
 
 const REF_IMAGE_PATH = path.resolve(process.cwd(), 'ref-image.png');
-const REF_IMAGE_FULL_PATH = path.resolve(process.cwd(), 'ref-image-full.png');
 const PARTIAL_WIDTH = 1000;
 const START_X = 1365 - PARTIAL_WIDTH;
 const START_Y = 712;
@@ -16,7 +15,6 @@ const START_Y = 712;
 async function handleFileAdded(params: {
   buffer: Buffer;
   refImage: Jimp;
-  refImageFull: Jimp;
   onPixelChanged: (params: OnPixelChanged) => unknown;
 }) {
   try {
@@ -58,11 +56,7 @@ async function handleFileAdded(params: {
   }
 }
 
-async function startBrowser(params: {
-  refImage: Jimp;
-  refImageFull: Jimp;
-  onPixelChanged: (params: OnPixelChanged) => void;
-}) {
+async function startBrowser(params: { refImage: Jimp; onPixelChanged: (params: OnPixelChanged) => void }) {
   const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   const page = await browser.newPage();
   await page.goto('https://www.reddit.com/r/place/?cx=1365&cy=712&px=13');
@@ -89,7 +83,6 @@ async function startBrowser(params: {
     handleFileAdded({
       buffer: await event.buffer(),
       refImage: params.refImage,
-      refImageFull: params.refImageFull,
       onPixelChanged: params.onPixelChanged,
     });
   });
@@ -97,12 +90,10 @@ async function startBrowser(params: {
 
 async function start() {
   const refImage = await Jimp.read(REF_IMAGE_PATH);
-  const refImageFull = await Jimp.read(REF_IMAGE_FULL_PATH);
   const { sendAlert } = initDiscord();
 
   await startBrowser({
     refImage,
-    refImageFull,
     onPixelChanged(params) {
       sendAlert(params);
     },
