@@ -1,4 +1,4 @@
-import { Client, Intents, NonThreadGuildBasedChannel } from 'discord.js';
+import { Client, Intents, MessageAttachment, MessageEmbed, NonThreadGuildBasedChannel } from 'discord.js';
 import { OnPixelChanged } from './types';
 
 export function initDiscord(): { sendAlert: (params: OnPixelChanged) => Promise<void> } {
@@ -17,11 +17,21 @@ export function initDiscord(): { sendAlert: (params: OnPixelChanged) => Promise<
       if (!channel?.isText()) {
         return;
       }
-      const message = `Pixel changed X:${params.x} Y:${params.y}!\nNow the colour is rgb(${params.afterColor.r}, ${params.afterColor.g}, ${params.afterColor.b})`;
+
+      const file = new MessageAttachment(params.previewImageBuffer, 'colour.png');
+      const embed = new MessageEmbed();
+      embed
+        .setTitle('Pixel changed!')
+        .setURL(`https://www.reddit.com/r/place/?cx=${params.x}&cy=${params.y}&px=26`)
+        .addField('X', `${params.x}`, true)
+        .addField('Y', `${params.y}`, true)
+        .setImage('attachment://colour.png');
       try {
-        await channel.send(message);
-      } catch {
+        await channel.send({ embeds: [embed], files: [file] });
+      } catch (err) {
+        const message = `Pixel changed X:${params.x} Y:${params.y}!\nNow the colour is rgb(${params.afterColor.r}, ${params.afterColor.g}, ${params.afterColor.b})`;
         console.error(`Failed send message "${message}" to Discord!`);
+        console.error(err);
       }
     },
   };

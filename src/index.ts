@@ -19,7 +19,7 @@ async function handleFileAdded(params: {
 }) {
   try {
     const image = await Jimp.read(params.buffer);
-    image.scan(START_X, START_Y, 21, 31, function (x, y, idx) {
+    image.scan(START_X, START_Y, 21, 31, async function (x, y, idx) {
       const red = image.bitmap.data[idx + 0];
       const green = image.bitmap.data[idx + 1];
       const blue = image.bitmap.data[idx + 2];
@@ -36,9 +36,55 @@ async function handleFileAdded(params: {
         return;
       }
 
+      const RENDER_WIDTH = 7;
+      const RENDER_HEIGHT = 7;
+      let renderImage = new Jimp(RENDER_WIDTH, RENDER_HEIGHT);
+
+      const renderStartX = x - Math.floor(RENDER_WIDTH / 2);
+      const renderStartY = y - Math.floor(RENDER_HEIGHT / 2);
+      for (let iX = 0; iX < RENDER_WIDTH; iX++) {
+        for (let iY = 0; iY < RENDER_HEIGHT; iY++) {
+          const refX = renderStartX + iX;
+          const refY = renderStartY + iY;
+          const refIdx = params.refImage.getPixelIndex(refX, refY);
+          const renderIdx = renderImage.getPixelIndex(iX, iY);
+
+          if (refX === x && refY === y) {
+            renderImage.bitmap.data[renderIdx + 0] = image.bitmap.data[refIdx + 0];
+            renderImage.bitmap.data[renderIdx + 1] = image.bitmap.data[refIdx + 1];
+            renderImage.bitmap.data[renderIdx + 2] = image.bitmap.data[refIdx + 2];
+            renderImage.bitmap.data[renderIdx + 3] = image.bitmap.data[refIdx + 3];
+          } else {
+            renderImage.bitmap.data[renderIdx + 0] = params.refImage.bitmap.data[refIdx + 0];
+            renderImage.bitmap.data[renderIdx + 1] = params.refImage.bitmap.data[refIdx + 1];
+            renderImage.bitmap.data[renderIdx + 2] = params.refImage.bitmap.data[refIdx + 2];
+            renderImage.bitmap.data[renderIdx + 3] = params.refImage.bitmap.data[refIdx + 3];
+          }
+        }
+      }
+
+      const SCALE_UP_PX = 100;
+      renderImage = renderImage.resize(SCALE_UP_PX, SCALE_UP_PX, Jimp.RESIZE_NEAREST_NEIGHBOR);
+
+      const oneBlockSize = Math.ceil(SCALE_UP_PX / RENDER_WIDTH) + 2;
+      const boarderStartX = Math.floor(Math.floor(RENDER_WIDTH / 2) * (SCALE_UP_PX / RENDER_WIDTH));
+      const boarderStartY = Math.floor(Math.floor(RENDER_HEIGHT / 2) * (SCALE_UP_PX / RENDER_HEIGHT));
+
+      for (let iX = 0; iX < oneBlockSize; iX++) {
+        for (let iY = 0; iY < oneBlockSize; iY++) {
+          if (iX > 0 && iY > 0 && iX < oneBlockSize - 1 && iY < oneBlockSize - 1) {
+            continue;
+          }
+          renderImage.setPixelColour(0xff00ffff, boarderStartX + iX, boarderStartY + iY);
+        }
+      }
+
+      const previewImageBuffer = await renderImage.getBufferAsync(Jimp.MIME_PNG);
+
       params.onPixelChanged({
         x: x + PARTIAL_WIDTH,
         y,
+        previewImageBuffer,
         beforeColor: {
           r: refImageRed,
           g: refImageGreen,
