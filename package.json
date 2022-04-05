@@ -2,6 +2,7 @@
   "name": "sar-rplace-checker",
   "packageManager": "yarn@3.2.0",
   "author": "CocoaCaa",
+  "license": "MIT",
   "scripts": {
     "start": "ts-node ./src/index.ts"
   },
