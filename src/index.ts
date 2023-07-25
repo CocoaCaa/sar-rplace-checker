@@ -167,7 +167,6 @@ async function start() {
     refImage,
     onPixelChanged(params) {
       sendAlert(params);
-      // console.log(params);
     },
   });
 }
