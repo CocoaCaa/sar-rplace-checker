@@ -25,7 +25,7 @@ async function handleFileAdded(params: {
     const image = await Jimp.read(params.buffer);
 
     image.scan(
-      params.targetArtwork.x - PARTIAL_WIDTH,
+      params.targetArtwork.x,
       params.targetArtwork.y,
       params.targetArtwork.width,
       params.targetArtwork.height,
@@ -116,6 +116,8 @@ async function handleFileAdded(params: {
 async function startBrowser(params: { refImage: Jimp; onPixelChanged: (params: OnPixelChanged) => void }) {
   const targetStartX = Number(process.env.TARGET_ARTWORK_START_X);
   const targetStartY = Number(process.env.TARGET_ARTWORK_START_Y);
+  const targetRefStartX = Number(process.env.TARGET_ARTWORK_REF_START_X);
+  const targetRefStartY = Number(process.env.TARGET_ARTWORK_REF_START_Y);
   const targetWidth = Number(process.env.TARGET_ARTWORK_WIDTH);
   const targetHeight = Number(process.env.TARGET_ARTWORK_HEIGHT);
   console.log(`Scan artwork in X: ${targetStartX}, Y: ${targetStartY}, W: ${targetWidth}, H: ${targetHeight}`);
@@ -137,7 +139,7 @@ async function startBrowser(params: { refImage: Jimp; onPixelChanged: (params: O
 
   const startTime = Date.now();
   page.on('response', async (event) => {
-    if (!event.url().startsWith('https://hot-potato.reddit.com/media/canvas-images/')) {
+    if (!event.url().startsWith('https://garlic-bread.reddit.com/media/canvas-images/')) {
       return;
     }
 
@@ -145,8 +147,8 @@ async function startBrowser(params: { refImage: Jimp; onPixelChanged: (params: O
 
     handleFileAdded({
       targetArtwork: {
-        x: targetStartX,
-        y: targetStartY,
+        x: targetRefStartX,
+        y: targetRefStartY,
         width: targetWidth,
         height: targetHeight,
       },
@@ -165,6 +167,7 @@ async function start() {
     refImage,
     onPixelChanged(params) {
       sendAlert(params);
+      // console.log(params);
     },
   });
 }
